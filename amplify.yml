@@ -16,7 +16,11 @@ frontend:
         - pnpm install --frozen-lockfile
     build:
       commands:
-        - pnpm run build
+        # CI コンテナはホストの CPU/メモリを過剰に検知し、ビルドツールが
+        # リソースを確保しすぎて OOM する。ローカル相当まで抑えるため:
+        #  - NODE_OPTIONS: Rollup 生成フェーズの JS ヒープ上限 (8GiB コンテナ内)
+        #  - GOMAXPROCS: esbuild (Go 製) のスレッド数を制限しコア過剰確保を防ぐ
+        - NODE_OPTIONS=--max-old-space-size=6144 GOMAXPROCS=2 pnpm run build
   artifacts:
     baseDirectory: dist
     files:
