@@ -95,9 +95,13 @@ export function hardenUserPool(props: {
   };
   // ローテーション有効時はレガシーの ALLOW_REFRESH_TOKEN_AUTH フローと共存できない
   // (CloudFormation エラーになる)。amplify-js は GetTokensFromRefreshToken を使うため
-  // このフローは不要。Amplify 既定の残り2フローは維持する。
+  // このフローは不要。
+  // ALLOW_USER_AUTH は選択ベース認証 (USER_AUTH) フロー。これが無いと
+  // パスキー登録/サインイン (StartWebAuthnRegistration 等) が
+  // "USER_AUTH flow is not enabled for the client" で失敗するため必須。
   cfnUserPoolClient.explicitAuthFlows = [
     "ALLOW_CUSTOM_AUTH",
     "ALLOW_USER_SRP_AUTH",
+    "ALLOW_USER_AUTH",
   ];
 }
