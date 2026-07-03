@@ -27,7 +27,7 @@ export function AccountSettingsView({ onBack }: Props) {
       </Card>
 
       <Card variation="outlined" marginTop="medium">
-        <Heading level={4}>認証アプリ (TOTP) の再設定</Heading>
+        <Heading level={4}>認証アプリ (TOTP) の変更・移行</Heading>
         <Divider marginBlock="small" />
         <TotpSection />
       </Card>

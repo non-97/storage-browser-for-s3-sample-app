@@ -10,9 +10,13 @@ import QRCode from "qrcode";
 import { toJaAuthMessage } from "./authErrorMessages";
 
 /** 認証アプリ (Google Authenticator 等) に表示される発行者名。 */
-const APP_NAME = "共有ファイル管理";
+const APP_NAME = "Secure File Sharing";
 
-/** 認証アプリ (TOTP) 再設定セクション。TOTP は 1 ユーザー 1 つのみ (Cognito 仕様)。 */
+/**
+ * 認証アプリ (TOTP) の変更・移行セクション。TOTP は 1 ユーザー 1 つのみ (Cognito 仕様)
+ * なので、これは「今の TOTP を新しいものへ置き換える」操作。ログイン済みの状態で使う
+ * (紛失時の復旧手段ではない。復旧は管理者リセットか、パスキーでのログイン)。
+ */
 export function TotpSection() {
   const [preference, setPreference] = useState<string>("読み込み中...");
   const [setupUri, setSetupUri] = useState("");
@@ -35,7 +39,7 @@ export function TotpSection() {
         setPreference(
           hasTotp
             ? `認証アプリ (TOTP) が MFA に設定されています${pref.preferred === "TOTP" ? " (優先)" : ""}。`
-            : "このアカウントは MFA (認証アプリ) でサインインします。認証アプリを機種変更・削除した場合は、下のボタンから再設定してください。",
+            : "このアカウントは MFA (認証アプリ) でサインインします。機種変更などで認証アプリを移すときは、まだログインできるうちに下のボタンで新しい認証アプリに登録し直してください (今の認証アプリと置き換わります)。認証アプリを失ってログインできない場合は、管理者にリセットを依頼するか、登録済みのパスキーでログインしてください。",
         );
       })
       .catch(() => setPreference("MFA 設定を取得できませんでした。"));
@@ -73,7 +77,7 @@ export function TotpSection() {
 
   if (done) {
     return (
-      <Alert variation="success" heading="認証アプリを再設定しました">
+      <Alert variation="success" heading="認証アプリを登録し直しました">
         次回サインインからは、新しく登録した認証アプリのコードを使用してください。以前のコードは無効になりました。
       </Alert>
     );
@@ -83,11 +87,11 @@ export function TotpSection() {
     <Flex direction="column" gap="small">
       <Text>{preference}</Text>
       <Alert variation="warning">
-        再設定すると、以前登録した認証アプリのコードは使えなくなります。
+        登録し直すと、以前の認証アプリのコードは使えなくなります (置き換え)。
       </Alert>
       {!setupUri ? (
         <Button onClick={startSetup} isLoading={busy}>
-          認証アプリを再設定する
+          新しい認証アプリに登録し直す
         </Button>
       ) : (
         <Flex direction="column" gap="small">

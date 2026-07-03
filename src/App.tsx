@@ -80,7 +80,7 @@ function App() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <header className="app-header">
-        <h1>共有ファイル管理</h1>
+        <h1>Secure File Sharing</h1>
         <div className="header-user">
           {email && <span className="user-email">{email}</span>}
           <button
