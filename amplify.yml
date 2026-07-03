@@ -16,10 +16,7 @@ frontend:
         - pnpm install --frozen-lockfile
     build:
       commands:
-        # Vite 8 (Rolldown) は CI コンテナでメモリを多く使い OOM しやすい。
-        # Node ヒープ上限を明示し (8GiB コンテナ内で native/OS 用に約 2GB を残す)、
-        # 際限ないヒープ増加による cgroup OOM を防ぐ。
-        - NODE_OPTIONS=--max-old-space-size=6144 pnpm run build
+        - pnpm run build
   artifacts:
     baseDirectory: dist
     files:
