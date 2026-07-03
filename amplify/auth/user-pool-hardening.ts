@@ -30,7 +30,10 @@ export function hardenUserPool(props: {
     },
   };
 
-  // パスワードポリシー: 最小16文字 + 複雑性維持、仮パスワード有効期限3日
+  // パスワードポリシー: 最小16文字 + 複雑性維持、仮パスワード有効期限3日。
+  // サインインポリシー: パスワードに加えパスキー (WEB_AUTHN) を第一要素として許可する。
+  // これが無いと Cognito は「WebAuthn not enabled for this pool」となり、
+  // パスキーの登録 (StartWebAuthnRegistration) 自体ができない。
   cfnUserPool.policies = {
     passwordPolicy: {
       minimumLength: 16,
@@ -40,13 +43,17 @@ export function hardenUserPool(props: {
       requireSymbols: true,
       temporaryPasswordValidityDays: 3,
     },
+    signInPolicy: {
+      allowedFirstAuthFactors: ["PASSWORD", "WEB_AUTHN"],
+    },
   };
 
   // パスキー (ユーザー検証あり) を MFA を満たす要素として有効化。
-  // MFA REQUIRED と共存させるため MULTI_FACTOR_WITH_USER_VERIFICATION にする
-  // (Amplify の loginWith.webAuthn はパスワードレス SINGLE_FACTOR で MFA REQUIRED と競合するため使わない)。
-  // RP ID (webAuthnRelyingPartyId) はカスタムドメインの FQDN を使うため、
-  // custom/cognito-custom-domain.ts の Construct 内で設定する (managed-login.ts で生成)。
+  // FactorConfiguration を MULTI_FACTOR_WITH_USER_VERIFICATION にすることで、
+  // ユーザー検証付きパスキーでのサインインが「多要素を満たした」扱いになる
+  // (MFA REQUIRED を単一パスキーで満たせる。パスワード経路は従来どおり TOTP を要求)。
+  // RP ID (webAuthnRelyingPartyId) はフロント SPA のドメインを使うため、
+  // custom/cognito-custom-domain.ts の Construct 内で設定する。
   cfnUserPool.webAuthnUserVerification = "required";
   cfnUserPool.webAuthnFactorConfiguration =
     "MULTI_FACTOR_WITH_USER_VERIFICATION";
