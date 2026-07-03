@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  associateWebAuthnCredential,
   listWebAuthnCredentials,
   deleteWebAuthnCredential,
   type AuthWebAuthnCredential,
@@ -13,19 +14,16 @@ import {
   Text,
 } from "@aws-amplify/ui-react";
 import { toJaAuthMessage } from "./authErrorMessages";
-import outputs from "../../amplify_outputs.json";
 
-// パスキー登録は WebAuthn のオリジン制約上 SPA からは直接行えないため、
-// Managed Login (auth ドメイン) の専用ページへリダイレクトして登録する。
-const CUSTOM_AUTH_DOMAIN = (
-  outputs as typeof outputs & { custom?: { customAuthDomain?: string } }
-).custom?.customAuthDomain;
-const CLIENT_ID = outputs.auth.user_pool_client_id;
+// パスキー登録は SPA からそのまま実行する。RP ID をフロント SPA のドメインに
+// 設定しているため (backend の webAuthnRelyingPartyId)、WebAuthn のオリジン制約を
+// 満たし、associateWebAuthnCredential() が SPA 上で成立する。
 
-/** パスキーの登録 (Managed Login へリダイレクト) / 一覧 / 削除セクション。 */
+/** パスキーの登録 (SPA から直接) / 一覧 / 削除セクション。 */
 export function PasskeySection() {
   const [credentials, setCredentials] = useState<AuthWebAuthnCredential[]>([]);
   const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
   const [error, setError] = useState("");
 
   const reload = useCallback(async () => {
@@ -45,16 +43,19 @@ export function PasskeySection() {
     reload();
   }, [reload]);
 
-  const register = useCallback(() => {
-    if (!CUSTOM_AUTH_DOMAIN) {
-      setError("認証ドメインが設定されていないため、パスキーを登録できません。");
-      return;
+  const register = useCallback(async () => {
+    setError("");
+    setRegistering(true);
+    try {
+      // SPA 上でパスキー登録セレモニーを実行 (ブラウザが顔認証/指紋/PIN を要求)。
+      await associateWebAuthnCredential();
+      await reload();
+    } catch (e) {
+      setError(toJaAuthMessage(e, "パスキーの登録に失敗しました。"));
+    } finally {
+      setRegistering(false);
     }
-    // Managed Login の専用ページでパスキー登録セレモニーを実行する。
-    // セレモニーは auth ドメイン上で行われ RP ID と一致するため成立する。
-    const redirectUri = encodeURIComponent(window.location.origin + "/");
-    window.location.href = `https://${CUSTOM_AUTH_DOMAIN}/passkeys/add?client_id=${CLIENT_ID}&redirect_uri=${redirectUri}`;
-  }, []);
+  }, [reload]);
 
   const remove = useCallback(
     async (credentialId: string | undefined) => {
@@ -75,7 +76,9 @@ export function PasskeySection() {
       <Text>
         パスキー (顔認証・指紋・PIN 等) を登録すると、認証アプリの代わりに追加の本人確認として使えます。
       </Text>
-      <Button onClick={register}>新しいパスキーを登録する</Button>
+      <Button onClick={register} isLoading={registering}>
+        新しいパスキーを登録する
+      </Button>
       <Divider />
       {loading ? (
         <Loader />

@@ -10,15 +10,21 @@ import {
 /**
  * Cognito Managed Login をカスタムドメインで提供するための設定。
  *
- * カスタムドメイン利用時、パスキー (WebAuthn) の RP ID はカスタムドメインの
- * FQDN でなければならないため、この Construct が User Pool の
- * `webAuthnRelyingPartyId` もカスタムドメインに設定する。
+ * あわせてパスキー (WebAuthn) の RP ID も設定する。RP ID は auth ドメインでは
+ * なく **フロント SPA のドメイン** を指定する (WebAuthn の RP ID はオリジンと
+ * 同じか親ドメインである必要があり、SPA から直接登録するにはフロントドメインで
+ * なければならない。フロントドメインは auth ドメインの親でもあるためログインにも使える)。
  */
 export interface CognitoCustomDomainProps {
   /** Amplify が生成した L1 UserPool。ドメイン紐付けと RP ID 設定に使う */
   readonly cfnUserPool: CfnUserPool;
   /** カスタムドメイン FQDN (例: auth.storage-browser.www.non-97.net) */
   readonly domainName: string;
+  /**
+   * パスキー (WebAuthn) の RP ID。フロント SPA のドメインを指定する
+   * (例: storage-browser.www.non-97.net)。domainName (auth ドメイン) とは別物。
+   */
+  readonly relyingPartyId: string;
   /**
    * カスタムドメイン用 ACM 証明書 ARN。
    * Cognito カスタムドメインは CloudFront に紐づくため **us-east-1** の証明書が必須。
@@ -63,8 +69,9 @@ export class CognitoCustomDomain extends Construct {
       customDomainConfig: { certificateArn: props.certificateArn },
     });
 
-    // パスキー RP ID をカスタムドメインに設定 (カスタムドメイン併用時は必須)
-    props.cfnUserPool.webAuthnRelyingPartyId = props.domainName;
+    // パスキー RP ID はフロント SPA のドメイン (auth ドメインではない)。
+    // SPA から直接パスキー登録できるようにするため。
+    props.cfnUserPool.webAuthnRelyingPartyId = props.relyingPartyId;
 
     // Route53 A エイリアス: カスタムドメイン → Cognito 管理の CloudFront
     // CloudFront のホストゾーン ID は全リージョン共通の固定値

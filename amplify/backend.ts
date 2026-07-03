@@ -53,6 +53,7 @@ const certificateArn = `arn:aws:acm:${customDomainConfig.certificateRegion}:${St
 new CognitoCustomDomain(userPool.stack, "CognitoCustomDomain", {
   cfnUserPool,
   domainName: customDomainConfig.domainName,
+  relyingPartyId: customDomainConfig.webAuthnRelyingPartyId,
   certificateArn,
   hostedZone: publicHostedZone,
 });

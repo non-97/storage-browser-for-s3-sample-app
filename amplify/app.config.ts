@@ -15,6 +15,15 @@ export const customDomainConfig = {
   /** Managed Login のカスタムドメイン FQDN */
   domainName: "auth.storage-browser.www.non-97.net",
   /**
+   * パスキー (WebAuthn) の RP ID。**フロント SPA のドメイン**を指定する。
+   * WebAuthn の仕様上、RP ID はオリジンと同じか親ドメインである必要がある。
+   * SPA (storage-browser…) から直接パスキー登録するにはこれが SPA オリジンと
+   * 一致していなければならず、かつ auth ドメイン (auth.storage-browser…) の
+   * 親でもあるためログインにも使える。auth ドメインを RP ID にすると SPA の
+   * 子ドメインになり登録できないので注意。
+   */
+  webAuthnRelyingPartyId: "storage-browser.www.non-97.net",
+  /**
    * ACM 証明書の ID (ARN の末尾部分)。完全な ARN はアカウント ID を含むため
    * ここには持たせず、backend.ts で Stack.of().account と合わせて組み立てる。
    */
