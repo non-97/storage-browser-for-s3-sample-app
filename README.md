@@ -59,9 +59,51 @@
 
 ## 前提ツール
 
-- Node.js 22 以降
+- Node.js 24 (Amplify Hosting のビルドと同じバージョン)
 - pnpm (npm / npx は使いません)
 - AWS 認証情報 (`aws sts get-caller-identity` が成功する状態)
+
+## デプロイ前に事前作成が必要なもの (初期構築)
+
+新しい AWS アカウント / 環境でゼロから構築する場合、初回のデプロイ (git push) より前に
+以下を順番どおり用意します。作成した値は `amplify/app.config.ts` と
+`scripts/setup-custom-domain.sh` に反映します。
+
+### AWS アカウント側 (一度きり)
+
+1. **CDK ブートストラップ (ap-northeast-1)**: `ampx pipeline-deploy` / `ampx sandbox` の前提。
+   未実施だとバックエンドのビルドが失敗します
+2. **Route53 公開ホストゾーン**: 例 `www.non-97.net`。委任済みであること
+3. **ACM 証明書 (us-east-1)**: 認証ドメイン (例 `auth.storage-browser.www.non-97.net`) 用。
+   Cognito カスタムドメインは CloudFront に紐づくため、東京ではなく us-east-1 の証明書が必須です
+4. **SES ドメイン ID の検証**: 例 `www.non-97.net` (DKIM)。招待 / パスワードリセット /
+   脅威保護通知メールの送信元になります
+5. **SES 送信認可ポリシー**: 上記 ID に `cognito-idp.amazonaws.com` からの送信を許可する
+   ポリシーを付与します。無いと Cognito がメールを送信できません
+6. **SES 本番アクセス**: サンドボックスのままだと検証済みアドレスにしか送信できません
+7. **ダミー A レコード**: フロントのドメイン (例 `storage-browser.www.non-97.net`) に任意の IP
+   (例 8.8.8.8) を指す A レコードを置きます。Cognito カスタムドメインは「親ドメインが DNS で
+   解決できること」が作成の前提のためです。**これを忘れると初回デプロイが失敗します**。
+   後で `scripts/setup-custom-domain.sh` が削除し、Amplify のレコードに置き換わります
+
+### GitHub 側
+
+8. リポジトリを作成します (main への push がそのまま本番デプロイになります)
+9. **Amplify GitHub App** をリポジトリにインストールします。App はリージョン別なので
+   ap-northeast-1 用を入れます (別リージョン用のインストールでは接続に失敗します)
+
+### Amplify 側
+
+10. Amplify アプリを作成してリポジトリと main ブランチを接続し、app-id を
+    `scripts/setup-custom-domain.sh` に反映します
+11. ビルドインスタンスを **XLARGE_72GB** にします。既定サイズだと Vite 8 のビルドが
+    メモリ誤検知で停止します (詳細は [docs/operations.md](docs/operations.md) §10)
+
+### 初回デプロイ後
+
+12. `scripts/setup-custom-domain.sh` を実行し、ダミー A レコードの削除とフロントの
+    カスタムドメイン関連付けを行います
+13. 利用者を作成します ([docs/operations.md](docs/operations.md) §1)
 
 ## セットアップと開発コマンド
 
@@ -85,8 +127,8 @@ pnpm build                                # 型チェックと本番ビルド
 
 コードの詳細を読まなくても変更できる値は、`amplify/app.config.ts` に集約しています。
 
-- カスタムドメイン: `domainName` / `certificateId` / `certificateRegion` / `hostedZoneId` / `hostedZoneName`
-- セキュリティ: `sesIdentityAddress` / `sesIdentityRegion` / `appOrigins` / ライフサイクルの日数 / `wafRateLimitPer5Minutes`
+- カスタムドメイン: `domainName` / `webAuthnRelyingPartyId` / `certificateId` / `certificateRegion` / `hostedZoneId` / `hostedZoneName`
+- セキュリティ: `sesIdentity` / `sesFromAddress` / `sesIdentityRegion` / `appOrigins` / `deletionProtection` / ライフサイクルの日数 / `wafRateLimitPer5Minutes`
 
 なお AWS アカウント ID は CDK が実行時に取得するため、このファイルには持たせていません。
 
