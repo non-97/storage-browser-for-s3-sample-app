@@ -82,8 +82,10 @@
    ポリシーを付与します。無いと Cognito がメールを送信できません
 6. **SES 本番アクセス**: サンドボックスのままだと検証済みアドレスにしか送信できません
 7. **ダミー A レコード**: フロントのドメイン (例 `storage-browser.www.non-97.net`) に任意の IP
-   (例 8.8.8.8) を指す A レコードを置きます。Cognito カスタムドメインは「親ドメインが DNS で
-   解決できること」が作成の前提のためです。**これを忘れると初回デプロイが失敗します**。
+   (例 8.8.8.8) を指す A レコードを置きます。Cognito カスタムドメインは「親ドメインに有効な
+   DNS A レコードがあり IP に解決できること」が作成の前提のためです (値は何でもよいと
+   [公式ドキュメントの Prerequisites](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-add-custom-domain.html) に明記)。
+   **これを忘れると初回デプロイが失敗します**。
    後で `scripts/setup-custom-domain.sh` が削除し、Amplify のレコードに置き換わります
 
 ### GitHub 側
