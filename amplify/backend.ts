@@ -1,5 +1,5 @@
 import { defineBackend } from "@aws-amplify/backend";
-import { Stack } from "aws-cdk-lib";
+import { RemovalPolicy, Stack } from "aws-cdk-lib";
 import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { auth } from "./auth/resource";
 import { storage } from "./storage/resource";
@@ -29,43 +29,65 @@ const { userPool, userPoolClient } = backend.auth.resources;
 const { cfnUserPool, cfnUserPoolClient, cfnIdentityPool } =
   backend.auth.resources.cfnResources;
 
+// sandbox (ローカル開発) かブランチデプロイ (Amplify Hosting) かを判定する。
+// Amplify が synth 時に設定する CDK コンテキスト amplify-backend-type を読む
+// (値: "sandbox" | "branch" | "standalone")。本番専用リソース (カスタムドメイン /
+// WAF / 監視ログ) はグローバル一意なドメインや固定名ロググループを使うため、sandbox を
+// 本番と並行して動かすと衝突する。そこで sandbox では作らず、Amplify 生成の Cognito
+// ドメイン + localhost で動かす。"sandbox" のときだけスキップし、branch /
+// standalone では作る (二値判定にして standalone を取りこぼさない)。
+const isSandbox =
+  backend.stack.node.tryGetContext("amplify-backend-type") === "sandbox";
+
 // --- 認証 (Cognito) の堅牢化 ---
 hardenUserPool({ cfnUserPool, cfnUserPoolClient, cfnIdentityPool });
 attachThreatProtection(userPool.stack, { cfnUserPool });
 enableManagedLogin({ userPool, userPoolClient });
 
-// Cognito Managed Login をカスタムドメインで公開する。
-// 設定値は App レベル (app.config.ts) から注入する。
-// この Construct 内でパスキーの RP ID もカスタムドメインに設定される。
-const publicHostedZone = HostedZone.fromHostedZoneAttributes(
-  userPool.stack,
-  "PublicZone",
-  {
-    hostedZoneId: customDomainConfig.hostedZoneId,
-    zoneName: customDomainConfig.hostedZoneName,
-  },
-);
+// Cognito Managed Login をカスタムドメインで公開する。本番専用 (sandbox ではスキップ)。
+// カスタムドメインはグローバル一意でプールと 1:1 のため、sandbox で作ると本番と衝突する。
+// sandbox ではカスタムドメインもパスキー RP ID も設定せず、Amplify 生成の Cognito ドメインを
+// 使う (フロントは custom.customAuthDomain が無ければ生成ドメインにフォールバックする)。
+if (!isSandbox) {
+  // 設定値は App レベル (app.config.ts) から注入する。
+  // この Construct 内でパスキーの RP ID もカスタムドメインに設定される。
+  const publicHostedZone = HostedZone.fromHostedZoneAttributes(
+    userPool.stack,
+    "PublicZone",
+    {
+      hostedZoneId: customDomainConfig.hostedZoneId,
+      zoneName: customDomainConfig.hostedZoneName,
+    },
+  );
 
-// ACM 証明書の ARN は、config の証明書 ID / リージョンとデプロイ先アカウントから
-// 組み立てる。アカウント ID をコードにハードコードしないため Stack.of().account を使う。
-const certificateArn = `arn:aws:acm:${customDomainConfig.certificateRegion}:${Stack.of(userPool.stack).account}:certificate/${customDomainConfig.certificateId}`;
+  // ACM 証明書の ARN は、config の証明書 ID / リージョンとデプロイ先アカウントから
+  // 組み立てる。アカウント ID をコードにハードコードしないため Stack.of().account を使う。
+  const certificateArn = `arn:aws:acm:${customDomainConfig.certificateRegion}:${Stack.of(userPool.stack).account}:certificate/${customDomainConfig.certificateId}`;
 
-new CognitoCustomDomain(userPool.stack, "CognitoCustomDomain", {
-  cfnUserPool,
-  domainName: customDomainConfig.domainName,
-  relyingPartyId: customDomainConfig.webAuthnRelyingPartyId,
-  certificateArn,
-  hostedZone: publicHostedZone,
-});
+  new CognitoCustomDomain(userPool.stack, "CognitoCustomDomain", {
+    cfnUserPool,
+    domainName: customDomainConfig.domainName,
+    relyingPartyId: customDomainConfig.webAuthnRelyingPartyId,
+    certificateArn,
+    hostedZone: publicHostedZone,
+  });
 
-// フロントエンドへはカスタム認証ドメイン名のみを amplify_outputs.json 経由で渡す。
-// ARN やホストゾーン ID などのインフラ識別子をクライアントバンドルに載せないため、
-// フロントから app.config.ts を直接 import しないこと。
-backend.addOutput({
-  custom: {
-    customAuthDomain: customDomainConfig.domainName,
-  },
-});
+  // フロントエンドへはカスタム認証ドメイン名のみを amplify_outputs.json 経由で渡す。
+  // ARN やホストゾーン ID などのインフラ識別子をクライアントバンドルに載せないため、
+  // フロントから app.config.ts を直接 import しないこと。
+  backend.addOutput({
+    custom: {
+      customAuthDomain: customDomainConfig.domainName,
+    },
+  });
+} else {
+  // sandbox はカスタムドメインを作らないため RP ID をここで設定する。
+  // hardenUserPool が WEB_AUTHN を第一要素に許可しており、RP ID 未設定だと
+  // デプロイが失敗し得るのを避ける。localhost は WebAuthn のセキュアコンテキスト
+  // 例外で、RP ID "localhost" は http://localhost:5173 と一致するため、sandbox でも
+  // パスキーの登録・検証ができる。
+  cfnUserPool.webAuthnRelyingPartyId = "localhost";
+}
 
 // ============================================================
 // セキュリティ強化リソース
@@ -86,14 +108,29 @@ hardenSharedFilesBucket(securityStack, {
   ),
 });
 
-// --- monitoring スタック: CloudTrail + WAF + ログ ---
-const monitoringStack = backend.createStack("monitoring");
-createAuditTrail(monitoringStack, {
-  targetBucket: backend.storage.resources.bucket,
-});
-attachCognitoWaf(monitoringStack, {
-  userPoolArn: backend.auth.resources.userPool.userPoolArn,
-});
-exportCognitoActivityLog(monitoringStack, {
-  userPoolId: cfnUserPool.ref,
-});
+// sandbox は使い捨て。config が deletionProtection: true でも、sandbox では保護を外して
+// ampx sandbox delete でクリーンに消せるようにする。deletionProtection ACTIVE と
+// RemovalPolicy.RETAIN はどちらもスタック削除を止めるため、User Pool とデータバケットの
+// 両方を上書きする (監査ログバケットは sandbox では作らないので対象外)。
+if (isSandbox) {
+  cfnUserPool.deletionProtection = "INACTIVE";
+  backend.storage.resources.cfnResources.cfnBucket.applyRemovalPolicy(
+    RemovalPolicy.DESTROY,
+  );
+}
+
+// --- monitoring スタック: CloudTrail + WAF + ログ (本番専用。sandbox ではスキップ) ---
+// WAF ログと脅威保護ログのロググループは固定名で、sandbox が本番と衝突する。
+// CloudTrail 監査ログもローカルの機能確認には不要なため、まとめて sandbox では作らない。
+if (!isSandbox) {
+  const monitoringStack = backend.createStack("monitoring");
+  createAuditTrail(monitoringStack, {
+    targetBucket: backend.storage.resources.bucket,
+  });
+  attachCognitoWaf(monitoringStack, {
+    userPoolArn: backend.auth.resources.userPool.userPoolArn,
+  });
+  exportCognitoActivityLog(monitoringStack, {
+    userPoolId: cfnUserPool.ref,
+  });
+}
