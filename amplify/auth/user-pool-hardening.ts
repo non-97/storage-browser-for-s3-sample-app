@@ -6,6 +6,9 @@ import type {
 } from "aws-cdk-lib/aws-cognito";
 import { securityConfig } from "../app.config";
 
+/** 仮パスワードの有効期限 (日)。パスワードポリシーと招待メール本文の両方で使う。 */
+const TEMP_PASSWORD_VALIDITY_DAYS = 3;
+
 /**
  * Amplify が生成した Cognito User Pool / App Client / Identity Pool に対して、
  * セキュリティ設定 (プラン / 脅威保護 / パスワードポリシー / MFA・パスキー要素 /
@@ -20,6 +23,11 @@ export function hardenUserPool(props: {
   cfnIdentityPool: CfnIdentityPool;
 }): void {
   const { cfnUserPool, cfnUserPoolClient, cfnIdentityPool } = props;
+
+  // 招待メールに載せるサインイン URL。config の CORS オリジンから本番 (https) を選ぶ。
+  const appSignInUrl =
+    securityConfig.appOrigins.find((origin) => origin.startsWith("https://")) ??
+    securityConfig.appOrigins[0];
 
   // Plus プランに変更(脅威保護に必要。Managed Login は Essentials 以上で利用可)
   cfnUserPool.userPoolTier = "PLUS";
@@ -50,7 +58,7 @@ export function hardenUserPool(props: {
       requireLowercase: true,
       requireNumbers: true,
       requireSymbols: true,
-      temporaryPasswordValidityDays: 3,
+      temporaryPasswordValidityDays: TEMP_PASSWORD_VALIDITY_DAYS,
     },
     signInPolicy: {
       allowedFirstAuthFactors: ["PASSWORD", "WEB_AUTHN"],
@@ -78,9 +86,25 @@ export function hardenUserPool(props: {
     from: securityConfig.sesFromAddress,
   };
 
-  // セルフサインアップを無効化(管理者がユーザーを作成する運用)
+  // セルフサインアップを無効化(管理者がユーザーを作成する運用)。
+  // 招待メール: admin-create-user (MessageAction 省略) で Cognito が仮パスワードを生成し、
+  // このテンプレートで本人へ直接送る。管理者はパスワードを扱わない。
+  // {username} / {####} は Cognito が置換するプレースホルダーで、パスワードあり運用では
+  // {####} が無いと招待メール自体が配信されないため必須。本文は HTML として描画されるので
+  // 改行は <br> を使う。
   cfnUserPool.adminCreateUserConfig = {
     allowAdminCreateUserOnly: true,
+    inviteMessageTemplate: {
+      emailSubject: "【Secure File Sharing】アカウントが作成されました",
+      emailMessage:
+        "Secure File Sharing のアカウントが作成されました。<br><br>" +
+        "ユーザー名: {username}<br>" +
+        "仮パスワード: {####}<br><br>" +
+        "次の URL からサインインし、画面の案内に従って新しいパスワードと認証アプリ (TOTP) を設定してください。<br>" +
+        `${appSignInUrl}<br><br>` +
+        `仮パスワードの有効期限は ${TEMP_PASSWORD_VALIDITY_DAYS} 日です。` +
+        "期限が切れた場合は、システム管理者に再招待を依頼してください。",
+    },
   };
 
   // ゲストアクセスを無効化

@@ -27,35 +27,30 @@ node -e "console.log(require('./amplify_outputs.json').custom.customAuthDomain)"
 > プールごとに独立するので、sandbox で認証を試すときは、sandbox プールの ID に対して下記の §1 の
 > 手順で利用者を作り直してください。
 
-> パスワードをコマンドの引数で渡すと、シェルの履歴に平文で残ります。作業後は
+> 本ガイドの手順には、パスワードをコマンドに直接書くものはありません (仮パスワードは
+> Cognito が生成して本人へメール送付します)。例外的に `admin-set-user-password` などで
+> パスワードを引数に渡す場合は、シェルの履歴に平文で残るため、作業後に
 > `history -d <番号>` などで該当行を消してください。
 
 ---
 
 ## 1. 利用者の追加
 
-セルフサインアップは無効にしてあります。管理者が次の 3 ステップ (作成 → パスワード設定 →
-グループ割り当て) で作成します。
+セルフサインアップは無効にしてあります。管理者が次の 2 ステップ (作成 → グループ割り当て) で
+作成します。仮パスワードは Cognito が自動生成して招待メールで本人へ直接送るため、管理者が
+パスワードを扱うことはありません。
 
 ```bash
-# (1) 利用者を作成する。ウェルカムメールは送らない
+# (1) 利用者を作成する。Cognito が仮パスワードを生成し、招待メールを本人へ送る。
+#     --desired-delivery-mediums EMAIL は必須 (省略するとデフォルトの SMS 配信になり届かない)
 aws cognito-idp admin-create-user \
   --user-pool-id <POOL_ID> \
   --username user@example.jp \
   --user-attributes Name=email,Value=user@example.jp Name=email_verified,Value=true \
-  --message-action SUPPRESS \
+  --desired-delivery-mediums EMAIL \
   --region ap-northeast-1
 
-# (2) 初期パスワードを設定する。--permanent を付けると変更不要、付けないと初回サインイン時に変更を強制
-#     パスワードは 16 文字以上で、大文字 / 小文字 / 数字 / 記号を含めること
-aws cognito-idp admin-set-user-password \
-  --user-pool-id <POOL_ID> \
-  --username user@example.jp \
-  --password 'ここに初期パスワード' \
-  --permanent \
-  --region ap-northeast-1
-
-# (3) グループに割り当てる。admin / dept-a / dept-b のいずれか。不要なら省略
+# (2) グループに割り当てる。admin / dept-a / dept-b のいずれか。不要なら省略
 aws cognito-idp admin-add-user-to-group \
   --user-pool-id <POOL_ID> \
   --username user@example.jp \
@@ -63,7 +58,20 @@ aws cognito-idp admin-add-user-to-group \
   --region ap-northeast-1
 ```
 
-- 初回サインイン時に、認証アプリ (TOTP による MFA) のセットアップが求められます
+- 本人が招待メールの仮パスワードでサインインすると、新しいパスワードの設定を求められ、
+  続けて認証アプリ (TOTP による MFA) のセットアップが求められます
+- 仮パスワードの有効期限は 3 日です。期限が切れた場合は、次のコマンドで再招待します。
+  新しい仮パスワードが生成され、有効期限もリセットされます
+
+  ```bash
+  aws cognito-idp admin-create-user \
+    --user-pool-id <POOL_ID> \
+    --username user@example.jp \
+    --message-action RESEND \
+    --desired-delivery-mediums EMAIL \
+    --region ap-northeast-1
+  ```
+
 - グループはアクセスできるフォルダに対応します。
   - admin: すべてのフォルダ
   - dept-a: shared フォルダと dept-a フォルダ
@@ -82,13 +90,19 @@ aws cognito-idp admin-delete-user --user-pool-id <POOL_ID> --username user@examp
 ## 3. パスワードのリセット
 
 ```bash
-# 管理者が新しいパスワードを直接設定する (--permanent)
-aws cognito-idp admin-set-user-password --user-pool-id <POOL_ID> --username user@example.jp --password '新しいパスワード' --permanent --region ap-northeast-1
+# リセットを強制する。確認コードが本人の検証済みメールに届く
+aws cognito-idp admin-reset-user-password \
+  --user-pool-id <POOL_ID> --username user@example.jp --region ap-northeast-1
 ```
 
-- `--permanent` を外すと、初回サインイン時に本人が変更する仮パスワードになります
-- 利用者自身は、サインイン後に画面右上の「アカウント設定 > パスワードの変更」から変更できます。
+- 実行後、本人が次にサインインしようとすると、メールに届いた確認コードと新しいパスワードの
+  入力を求められます。管理者が新しいパスワードを扱うことはありません
+- 本人が自分で変えたい場合は、サインイン画面の「パスワードをお忘れですか」からも同じ流れで
+  再設定できます。サインイン済みなら「アカウント設定 > パスワードの変更」も使えます。
   変更すると、そのアカウントの全端末からサインアウトされます
+- 補足: リセットの完了に MFA は要求されず、メールの確認コードと新パスワードのみで完了します。
+  ただしサインインには TOTP かパスキーが必須のため、メールが侵害されただけではアカウントは
+  奪われません
 
 ## 4. 認証アプリ (MFA) を紛失した利用者への対応
 

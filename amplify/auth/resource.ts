@@ -2,7 +2,14 @@ import { defineAuth } from "@aws-amplify/backend";
 
 export const auth = defineAuth({
   loginWith: {
-    email: true,
+    // 確認コードメール (パスワードリセット / 属性変更の確認コードに共通) を日本語化する。
+    // admin-reset-user-password のリセットコードもこのテンプレートで送られる。
+    email: {
+      verificationEmailStyle: "CODE",
+      verificationEmailSubject: "【Secure File Sharing】確認コード",
+      verificationEmailBody: (createCode) =>
+        `Secure File Sharing の確認コードは ${createCode()} です。心当たりがない場合は、このメールを無視してください。`,
+    },
     externalProviders: {
       // Managed Login を有効化するために externalProviders + domainPrefix の指定が必須。
       // ただしこの domainPrefix 値は実際には使われず (Amplify がハッシュ名のドメインを
