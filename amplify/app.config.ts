@@ -61,12 +61,12 @@ export const securityConfig = {
   ],
   /**
    * リソースの削除保護。本番は true、使い捨ての検証環境は false にする。
-   * true なら User Pool は deletionProtection ACTIVE、全 S3 バケットは
-   * RemovalPolicy.RETAIN になり、スタックを削除してもリソースは残る。
-   * false なら INACTIVE と DESTROY になり、スタック削除でリソースも消える。
-   * false でバケットを消すときは、事前に中身を空にしておく必要がある
-   * (autoDeleteObjects は使わない方針)。
-   * sandbox では値に関わらず常に無効になる (使い捨てのため backend.ts で上書き)。
+   * true なら User Pool は deletionProtection ACTIVE、S3 バケットは削除時に保持される
+   * (データバケットは defineStorage の keepOnDelete、監査ログバケットは RemovalPolicy.RETAIN)。
+   * false なら削除可能になる。データバケットは Amplify の autoDeleteObjects で中身ごと
+   * 自動削除され、監査ログバケットは自動削除しないため消すときは事前に中身を空にする。
+   * sandbox では値に関わらず使い捨てになる。User Pool は backend.ts で保護を解除し、
+   * データバケットは Amplify が sandbox で常に DESTROY にする。
    */
   deletionProtection: true,
   /** データバケット: PUT から Standard-IA へ移行する日数 (S3 の制約で最小 30) */

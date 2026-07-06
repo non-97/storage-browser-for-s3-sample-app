@@ -1,4 +1,4 @@
-import { RemovalPolicy, type Stack } from "aws-cdk-lib";
+import type { Stack } from "aws-cdk-lib";
 import { Key } from "aws-cdk-lib/aws-kms";
 import type { CfnBucket } from "aws-cdk-lib/aws-s3";
 import type { IRole } from "aws-cdk-lib/aws-iam";
@@ -107,14 +107,9 @@ export function hardenSharedFilesBucket(
     ],
   };
 
-  // 削除保護。config の deletionProtection に従い DeletionPolicy / UpdateReplacePolicy を
-  // 設定する。RETAIN ならスタック削除でもバケットが残る。DESTROY で消すときは、
-  // 事前にバケットを空にしておく必要がある (autoDeleteObjects は使わない方針)。
-  cfnBucket.applyRemovalPolicy(
-    securityConfig.deletionProtection
-      ? RemovalPolicy.RETAIN
-      : RemovalPolicy.DESTROY,
-  );
+  // 削除保護 (removalPolicy / autoDeleteObjects) は defineStorage の keepOnDelete で
+  // 制御する (storage/resource.ts)。Amplify 生成バケットは autoDeleteObjects が既定で付くため、
+  // ここで手動 removalPolicy を当てると「autoDeleteObjects は DESTROY 必須」の検証に落ちる。
 
   // 重要: Cognito の全ロールに KMS 権限を付与する
   // これを忘れるとバケットへの全操作が AccessDenied になる

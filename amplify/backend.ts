@@ -1,5 +1,5 @@
 import { defineBackend } from "@aws-amplify/backend";
-import { RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Stack } from "aws-cdk-lib";
 import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { auth } from "./auth/resource";
 import { storage } from "./storage/resource";
@@ -108,15 +108,12 @@ hardenSharedFilesBucket(securityStack, {
   ),
 });
 
-// sandbox は使い捨て。config が deletionProtection: true でも、sandbox では保護を外して
-// ampx sandbox delete でクリーンに消せるようにする。deletionProtection ACTIVE と
-// RemovalPolicy.RETAIN はどちらもスタック削除を止めるため、User Pool とデータバケットの
-// 両方を上書きする (監査ログバケットは sandbox では作らないので対象外)。
+// sandbox は使い捨て。config が deletionProtection: true でも、sandbox では User Pool の
+// 削除保護を外して ampx sandbox delete でクリーンに消せるようにする。データバケットは
+// defineStorage の keepOnDelete を Amplify が sandbox で自動的に無視する (常に DESTROY) ため、
+// ここでの上書きは不要。
 if (isSandbox) {
   cfnUserPool.deletionProtection = "INACTIVE";
-  backend.storage.resources.cfnResources.cfnBucket.applyRemovalPolicy(
-    RemovalPolicy.DESTROY,
-  );
 }
 
 // --- monitoring スタック: CloudTrail + WAF + ログ (本番専用。sandbox ではスキップ) ---
