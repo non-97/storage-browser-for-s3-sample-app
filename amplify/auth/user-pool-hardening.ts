@@ -1,8 +1,10 @@
+import { Stack } from "aws-cdk-lib";
 import type {
   CfnUserPool,
   CfnUserPoolClient,
   CfnIdentityPool,
 } from "aws-cdk-lib/aws-cognito";
+import { securityConfig } from "../app.config";
 
 /**
  * Amplify が生成した Cognito User Pool / App Client / Identity Pool に対して、
@@ -21,6 +23,13 @@ export function hardenUserPool(props: {
 
   // Plus プランに変更(脅威保護に必要。Managed Login は Essentials 以上で利用可)
   cfnUserPool.userPoolTier = "PLUS";
+
+  // 削除保護。config の deletionProtection に従う。ACTIVE 中は User Pool を
+  // 削除・置換する変更が拒否される。プール置換が必要なときは config を false に
+  // してデプロイしてから行う。
+  cfnUserPool.deletionProtection = securityConfig.deletionProtection
+    ? "ACTIVE"
+    : "INACTIVE";
 
   // 脅威保護を有効化: 標準認証 + カスタム認証フローの両方を強制適用
   cfnUserPool.userPoolAddOns = {
@@ -57,6 +66,17 @@ export function hardenUserPool(props: {
   cfnUserPool.webAuthnUserVerification = "required";
   cfnUserPool.webAuthnFactorConfiguration =
     "MULTI_FACTOR_WITH_USER_VERIFICATION";
+
+  // 通常のユーザー宛メール (招待 / パスワードリセット / MFA 設定 / 確認コード) を
+  // SES 経由で送信する。既定の Cognito 送信は no-reply@verificationemail.com かつ
+  // 1 日 50 通固定で本番には使えない。脅威保護通知と同じ SES 検証済み ID を流用する。
+  // SES ID には Cognito (cognito-idp.amazonaws.com) からの送信を許可する
+  // sending authorization policy が必要 (脅威保護通知用に既に付与済みのもの)。
+  cfnUserPool.emailConfiguration = {
+    emailSendingAccount: "DEVELOPER",
+    sourceArn: `arn:aws:ses:${securityConfig.sesIdentityRegion}:${Stack.of(cfnUserPool).account}:identity/${securityConfig.sesIdentity}`,
+    from: securityConfig.sesFromAddress,
+  };
 
   // セルフサインアップを無効化(管理者がユーザーを作成する運用)
   cfnUserPool.adminCreateUserConfig = {

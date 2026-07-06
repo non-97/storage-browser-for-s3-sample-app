@@ -1,10 +1,10 @@
 /**
  * アプリの環境固有設定を集約したファイル (App レベルのパラメータ注入点)。
  *
- * ここには実際のドメイン名や証明書 ID などの環境固有値が入るため、
- * **このファイルは .gitignore 対象**。リポジトリにコミットされるのは
- * ダミー値を入れた app.config.example.ts の方。新しく clone した場合は
- * example をコピーして実値を埋める (README 参照)。
+ * ここに入るのはドメイン名 / 証明書 ID / ホストゾーン ID などの環境固有値だが、
+ * いずれも公開しても機微でない値のため、このファイルはリポジトリにコミットする。
+ * アカウント ID はここに持たせず backend.ts で Stack.of().account から導出する。
+ * 秘密情報 (パスワード / トークン等) はここに書かないこと。
  *
  * **フロントエンドからは import しないこと** (インフラ識別子をクライアント
  * バンドルに載せないため)。フロントへ渡す値は backend.addOutput 経由にする。
@@ -59,6 +59,16 @@ export const securityConfig = {
     "http://localhost:5173",
     "https://storage-browser.www.non-97.net",
   ],
+  /**
+   * リソースの削除保護。本番は true、使い捨ての検証環境は false にする。
+   * true なら User Pool は deletionProtection ACTIVE、全 S3 バケットは
+   * RemovalPolicy.RETAIN になり、スタックを削除してもリソースは残る。
+   * false なら INACTIVE と DESTROY になり、スタック削除でリソースも消える。
+   * false でバケットを消すときは、事前に中身を空にしておく必要がある
+   * (autoDeleteObjects は使わない方針)。
+   * sandbox では値に関わらず常に無効になる (使い捨てのため backend.ts で上書き)。
+   */
+  deletionProtection: true,
   /** データバケット: PUT から Standard-IA へ移行する日数 (S3 の制約で最小 30) */
   dataIaTransitionDays: 90,
   /** データバケット: 非現行バージョン (削除・上書き前の旧版) の失効日数 */

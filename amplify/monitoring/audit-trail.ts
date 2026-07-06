@@ -1,4 +1,4 @@
-import { Duration, type Stack } from "aws-cdk-lib";
+import { Duration, RemovalPolicy, type Stack } from "aws-cdk-lib";
 import { Key } from "aws-cdk-lib/aws-kms";
 import { PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Trail, ReadWriteType } from "aws-cdk-lib/aws-cloudtrail";
@@ -73,4 +73,12 @@ export function createAuditTrail(
     ],
     expiration: Duration.days(securityConfig.auditExpirationDays),
   });
+
+  // 削除保護。config の deletionProtection に従う。監査ログバケットも同じ方針で
+  // RETAIN / DESTROY を切り替える。DESTROY で消すときは事前に空にする必要がある。
+  trailBucket.applyRemovalPolicy(
+    securityConfig.deletionProtection
+      ? RemovalPolicy.RETAIN
+      : RemovalPolicy.DESTROY,
+  );
 }
