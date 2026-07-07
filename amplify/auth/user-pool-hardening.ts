@@ -51,6 +51,9 @@ export function hardenUserPool(props: {
   // サインインポリシー: パスワードに加えパスキー (WEB_AUTHN) を第一要素として許可する。
   // これが無いと Cognito は「WebAuthn not enabled for this pool」となり、
   // パスキーの登録 (StartWebAuthnRegistration) 自体ができない。
+  // 副作用: WEB_AUTHN を第一要素に入れるとプールが「パスワードレスオプション有効」とみなされ、
+  // admin-create-user の仮パスワード自動生成が無効化される。利用者作成時は
+  // --temporary-password で仮パスワードを明示的に渡す必要がある (docs/operations.md §1 参照)。
   cfnUserPool.policies = {
     passwordPolicy: {
       minimumLength: 16,
@@ -87,8 +90,9 @@ export function hardenUserPool(props: {
   };
 
   // セルフサインアップを無効化(管理者がユーザーを作成する運用)。
-  // 招待メール: admin-create-user (MessageAction 省略) で Cognito が仮パスワードを生成し、
-  // このテンプレートで本人へ直接送る。管理者はパスワードを扱わない。
+  // 招待メール: admin-create-user でこのテンプレートを本人へ送る。上記のパスワードレス設定
+  // (WEB_AUTHN 第一要素) により仮パスワードは自動生成されないため、作成時は
+  // --temporary-password で渡す (docs/operations.md §1)。値は {####} で本人に届く。
   // {username} / {####} は Cognito が置換するプレースホルダーで、パスワードあり運用では
   // {####} が無いと招待メール自体が配信されないため必須。本文は HTML として描画されるので
   // 改行は <br> を使う。

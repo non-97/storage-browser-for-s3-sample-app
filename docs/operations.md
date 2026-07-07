@@ -37,18 +37,31 @@ node -e "console.log(require('./amplify_outputs.json').custom.customAuthDomain)"
 ## 1. 利用者の追加
 
 セルフサインアップは無効にしてあります。管理者が次の 2 ステップ (作成 → グループ割り当て) で
-作成します。仮パスワードは Cognito が自動生成して招待メールで本人へ直接送るため、管理者が
-パスワードを扱うことはありません。
+作成します。仮パスワードは招待メールで本人へ直接届くため、管理者が平文パスワードを手順書や
+チャットに残す必要はありません。
+
+このプールはパスキー (WEB_AUTHN) を第一要素に許可しているため、Cognito 側でパスワードレスと
+みなされ、仮パスワードの自動生成が行われません。そのため作成時は `--temporary-password` で
+仮パスワードを明示的に渡す必要があります。下記のように、その場で生成して変数経由で渡し、
+値は画面に出さずに作業します。
 
 ```bash
-# (1) 利用者を作成する。Cognito が仮パスワードを生成し、招待メールを本人へ送る。
+# (1) 利用者を作成する。仮パスワードはその場で生成して渡し、招待メールで本人へ届く。
 #     --desired-delivery-mediums EMAIL は必須 (省略するとデフォルトの SMS 配信になり届かない)
+
+# 仮パスワードをその場で生成する (値は表示しない)。
+# ポリシー: 16 文字以上 / 大文字 / 小文字 / 数字 / 記号。末尾の Aa1- で各種を確実に満たす。
+TMP_PW="$(openssl rand -base64 18)Aa1-"
+
 aws cognito-idp admin-create-user \
   --user-pool-id <POOL_ID> \
   --username user@example.jp \
   --user-attributes Name=email,Value=user@example.jp Name=email_verified,Value=true \
+  --temporary-password "$TMP_PW" \
   --desired-delivery-mediums EMAIL \
   --region ap-northeast-1
+
+unset TMP_PW
 
 # (2) グループに割り当てる。admin / dept-a / dept-b のいずれか。不要なら省略
 aws cognito-idp admin-add-user-to-group \
@@ -58,18 +71,25 @@ aws cognito-idp admin-add-user-to-group \
   --region ap-northeast-1
 ```
 
+- `$TMP_PW` の値は読む必要がありません。本人には招待メールで届きます。`echo $TMP_PW` はせず、
+  作成後に `unset` で変数を消してください
 - 本人が招待メールの仮パスワードでサインインすると、新しいパスワードの設定を求められ、
   続けて認証アプリ (TOTP による MFA) のセットアップが求められます
-- 仮パスワードの有効期限は 3 日です。期限が切れた場合は、次のコマンドで再招待します。
-  新しい仮パスワードが生成され、有効期限もリセットされます
+- 仮パスワードの有効期限は 3 日です。期限が切れた場合は、新しい仮パスワードを生成して再招待します。
+  有効期限もリセットされます
 
   ```bash
+  TMP_PW="$(openssl rand -base64 18)Aa1-"
+
   aws cognito-idp admin-create-user \
     --user-pool-id <POOL_ID> \
     --username user@example.jp \
     --message-action RESEND \
+    --temporary-password "$TMP_PW" \
     --desired-delivery-mediums EMAIL \
     --region ap-northeast-1
+
+  unset TMP_PW
   ```
 
 - グループはアクセスできるフォルダに対応します。
