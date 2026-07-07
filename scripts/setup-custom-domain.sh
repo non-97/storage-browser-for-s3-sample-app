@@ -8,14 +8,22 @@
 #
 # 事前準備: awsume 等で AWS 認証済みにしておくこと (aws sts get-caller-identity が通る状態)。
 #
+# 使い方 (横展開を想定し、環境固有値はデフォルトを持たない。環境変数で必ず指定する):
+#   APP_ID=<AmplifyアプリID> \
+#   DOMAIN_NAME=<フロントのFQDN> \
+#   HOSTED_ZONE_ID=<Route53ホストゾーンID> \
+#   ./scripts/setup-custom-domain.sh
+#
 set -euo pipefail
 
-# ===== 設定 (環境変数で上書き可) =====
-APP_ID="${APP_ID:-dugv9lhpj4k9l}"
+# ===== 設定 =====
+# 環境固有値 (必須。未指定ならエラーで止まる)
+APP_ID="${APP_ID:?環境変数 APP_ID を指定してください (Amplify アプリの ID。aws amplify list-apps で確認)}"
+DOMAIN_NAME="${DOMAIN_NAME:?環境変数 DOMAIN_NAME を指定してください (フロントのカスタムドメイン FQDN)}"
+HOSTED_ZONE_ID="${HOSTED_ZONE_ID:?環境変数 HOSTED_ZONE_ID を指定してください (Route53 ホストゾーン ID)}"
+# 環境に依存しない値 (上書き可)
 APP_REGION="${APP_REGION:-ap-northeast-1}"
-DOMAIN_NAME="${DOMAIN_NAME:-storage-browser.www.non-97.net}"
 BRANCH_NAME="${BRANCH_NAME:-main}"
-HOSTED_ZONE_ID="${HOSTED_ZONE_ID:-Z0062708UVGI90E3DEGD}"
 
 log() { printf '\n\033[1m=== %s ===\033[0m\n' "$*"; }
 

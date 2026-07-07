@@ -96,15 +96,16 @@
 
 ### Amplify 側
 
-10. Amplify アプリを作成してリポジトリと main ブランチを接続し、app-id を
-    `scripts/setup-custom-domain.sh` に反映します
+10. Amplify アプリを作成してリポジトリと main ブランチを接続します。採番された app-id は
+    後の手順で使うため控えます (`aws amplify list-apps` でも確認可)
 11. ビルドインスタンスを **XLARGE_72GB** にします。既定サイズだと Vite 8 のビルドが
     メモリ誤検知で停止します (詳細は [docs/operations.md](docs/operations.md) §11)
 
 ### 初回デプロイ後
 
 12. `scripts/setup-custom-domain.sh` を実行し、ダミー A レコードの削除とフロントの
-    カスタムドメイン関連付けを行います
+    カスタムドメイン関連付けを行います。環境固有値 (APP_ID / DOMAIN_NAME / HOSTED_ZONE_ID)
+    は環境変数で渡します (スクリプト冒頭の使い方を参照)
 13. 利用者を作成します ([docs/operations.md](docs/operations.md) §1)
 
 ## セットアップと開発コマンド
