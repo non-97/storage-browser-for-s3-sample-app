@@ -99,7 +99,7 @@
 10. Amplify アプリを作成してリポジトリと main ブランチを接続し、app-id を
     `scripts/setup-custom-domain.sh` に反映します
 11. ビルドインスタンスを **XLARGE_72GB** にします。既定サイズだと Vite 8 のビルドが
-    メモリ誤検知で停止します (詳細は [docs/operations.md](docs/operations.md) §10)
+    メモリ誤検知で停止します (詳細は [docs/operations.md](docs/operations.md) §11)
 
 ### 初回デプロイ後
 
