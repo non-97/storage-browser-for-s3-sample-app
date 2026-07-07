@@ -99,7 +99,7 @@
 10. Amplify アプリを作成してリポジトリと main ブランチを接続します。採番された app-id は
     後の手順で使うため控えます (`aws amplify list-apps` でも確認可)
 11. ビルドインスタンスを **XLARGE_72GB** にします。既定サイズだと Vite 8 のビルドが
-    メモリ誤検知で停止します (詳細は [docs/operations.md](docs/operations.md) §11)
+    メモリ誤検知で停止します (詳細は [docs/operations.md](docs/operations.md) §10)
 
 ### 初回デプロイ後
 
@@ -143,8 +143,8 @@ pnpm build                                # 型チェックと本番ビルド
 
 ## 運用手順とトラブルシューティング
 
-利用者の追加、パスワードのリセット、認証アプリを紛失した場合の対応、ログの確認方法、本番移行の
-チェックリストなどは [docs/operations.md](docs/operations.md) にまとめています。
+利用者の追加、パスワードのリセット、認証アプリを紛失した場合の対応、誤削除したファイルの復元、
+ログの確認方法などは [docs/operations.md](docs/operations.md) にまとめています。
 
 ## 実装上の注意点
 
