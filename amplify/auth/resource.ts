@@ -9,12 +9,15 @@ const redirectUrls = securityConfig.appOrigins.map((origin) => `${origin}/`);
 export const auth = defineAuth({
   loginWith: {
     // 確認コードメール (パスワードリセット / 属性変更の確認コードに共通) を日本語化する。
-    // admin-reset-user-password のリセットコードもこのテンプレートで送られる。
+    // 用途を特定できない共用テンプレートのため、汎用の操作案内を入れる。
+    // HTML として描画されるため改行は <br>。createCode() は 1 回だけ呼ぶ。
     email: {
       verificationEmailStyle: "CODE",
       verificationEmailSubject: "【Secure File Sharing】確認コード",
       verificationEmailBody: (createCode) =>
-        `Secure File Sharing の確認コードは ${createCode()} です。心当たりがない場合は、このメールを無視してください。`,
+        `Secure File Sharing の確認コードは ${createCode()} です。<br>` +
+        "アプリのサインイン画面で、求められた欄にこの確認コードを入力して操作を続けてください。<br>" +
+        "心当たりがない場合は、このメールを無視してください。",
     },
     externalProviders: {
       // Managed Login を有効化するために externalProviders + domainPrefix の指定が必須。
