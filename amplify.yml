@@ -28,6 +28,9 @@ frontend:
 # CSP は最も壊れやすいため、デプロイ後に アップロード / ダウンロード / パスキー登録 /
 # QR 表示 / ログインを実機確認し、ブラウザコンソールに違反が出たら該当ディレクティブを足す。
 # connect-src は Cognito (idp / identity) と S3 (ap-northeast-1) を許可済み。
+# 注意 (横展開時): このファイルは app.config.ts を参照できないため、環境固有値が
+# ベタ書きになっている。別環境へ展開するときは connect-src のリージョンと
+# form-action の認証ドメイン (auth.〜) を環境に合わせて書き換えること。
 customHeaders:
   - pattern: "**"
     headers:

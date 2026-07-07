@@ -1,4 +1,10 @@
 import { defineAuth } from "@aws-amplify/backend";
+import { securityConfig } from "../app.config";
+
+// OAuth のリダイレクト先。CORS と同じオリジン一覧 (app.config.ts の appOrigins) から
+// 導出し、環境固有値の二重管理を避ける。フロントは window.location.origin に一致する
+// URL をこの配列から選んでリダイレクトに使う (src/main.tsx)。
+const redirectUrls = securityConfig.appOrigins.map((origin) => `${origin}/`);
 
 export const auth = defineAuth({
   loginWith: {
@@ -16,17 +22,10 @@ export const auth = defineAuth({
       // 自動生成する)、CloudFormation にも渡らない。アカウント ID 等は埋め込まない。
       domainPrefix: "storage-browser-app",
       // 本番 (Amplify Hosting カスタムドメイン) と開発 (Vite) の両方を許可する。
-      // フロントは window.location.origin に一致する URL をこの配列から選んで
-      // OAuth リダイレクトに使う (src/main.tsx)。本番 origin が無いとログインの
-      // リダイレクトが失敗する。localhost はローカル開発用 (厳格化時は削除可)。
-      callbackUrls: [
-        "https://storage-browser.www.non-97.net/",
-        "http://localhost:5173/",
-      ],
-      logoutUrls: [
-        "https://storage-browser.www.non-97.net/",
-        "http://localhost:5173/",
-      ],
+      // 本番 origin が無いとログインのリダイレクトが失敗する。
+      // localhost はローカル開発用 (厳格化時は appOrigins から削除)。
+      callbackUrls: redirectUrls,
+      logoutUrls: redirectUrls,
     },
   },
   // MFA 必須(TOTP)。パスキー(ユーザー検証あり)も MFA を満たす要素として利用可(backend.ts で設定)
