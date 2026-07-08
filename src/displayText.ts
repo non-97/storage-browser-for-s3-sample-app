@@ -12,7 +12,7 @@ const jaDateFormat = new Intl.DateTimeFormat("ja-JP", {
 export const jaDisplayText: StorageBrowserDisplayText = {
   LocationsView: {
     title: "ホーム",
-    searchPlaceholder: "フォルダとファイルを検索",
+    searchPlaceholder: "フォルダを検索",
     searchSubmitLabel: "検索",
     searchClearLabel: "検索をクリア",
     loadingIndicatorLabel: "読み込み中",
