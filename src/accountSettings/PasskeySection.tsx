@@ -47,7 +47,7 @@ export function PasskeySection() {
     setError("");
     setRegistering(true);
     try {
-      // SPA 上でパスキー登録セレモニーを実行 (ブラウザが顔認証/指紋/PIN を要求)。
+      // SPA 上でパスキー登録セレモニーを実行する (ブラウザが本人確認を求める)。
       await associateWebAuthnCredential();
       await reload();
     } catch (e) {
@@ -74,7 +74,7 @@ export function PasskeySection() {
   return (
     <Flex direction="column" gap="small">
       <Text>
-        パスキー (顔認証・指紋・PIN 等) を登録すると、認証アプリの代わりに追加の本人確認として使えます。
+        パスキーを登録すると、パスキーだけでサインインできます。
       </Text>
       <Button onClick={register} isLoading={registering}>
         新しいパスキーを登録する

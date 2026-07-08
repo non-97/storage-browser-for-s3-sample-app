@@ -15,7 +15,7 @@ const APP_NAME = "Secure File Sharing";
 /**
  * 認証アプリ (TOTP) の変更・移行セクション。TOTP は 1 ユーザー 1 つのみ (Cognito 仕様)
  * なので、これは「今の TOTP を新しいものへ置き換える」操作。ログイン済みの状態で使う
- * (紛失時の復旧手段ではない。復旧は管理者リセットか、パスキーでのログイン)。
+ * (紛失時の復旧手段ではない。復旧はパスキーでのサインインか、利用者の再作成)。
  */
 export function TotpSection() {
   const [preference, setPreference] = useState<string>("読み込み中...");
@@ -39,7 +39,7 @@ export function TotpSection() {
         setPreference(
           hasTotp
             ? `認証アプリ (TOTP) が MFA に設定されています${pref.preferred === "TOTP" ? " (優先)" : ""}。`
-            : "このアカウントは MFA (認証アプリ) でサインインします。機種変更などで認証アプリを移すときは、まだログインできるうちに下のボタンで新しい認証アプリに登録し直してください (今の認証アプリと置き換わります)。認証アプリを失ってログインできない場合は、管理者にリセットを依頼するか、登録済みのパスキーでログインしてください。",
+            : "このアカウントは MFA (認証アプリ) でサインインします。\n\n機種変更などで認証アプリを移すときは、まだサインインできるうちに、下のボタンで新しい認証アプリに登録し直してください。今の認証アプリと置き換わります。\n\n認証アプリを失ってサインインできない場合は、登録済みのパスキーでサインインしてください。パスキーが無い場合は、管理者に利用者の再作成を依頼してください。",
         );
       })
       .catch(() => setPreference("MFA 設定を取得できませんでした。"));
@@ -85,7 +85,7 @@ export function TotpSection() {
 
   return (
     <Flex direction="column" gap="small">
-      <Text>{preference}</Text>
+      <Text style={{ whiteSpace: "pre-line" }}>{preference}</Text>
       <Alert variation="warning">
         登録し直すと、以前の認証アプリのコードは使えなくなります (置き換え)。
       </Alert>
