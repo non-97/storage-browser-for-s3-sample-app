@@ -79,7 +79,7 @@
 
 1. CDK ブートストラップ (ap-northeast-1) を実行します。`ampx pipeline-deploy` と
    `ampx sandbox` の前提で、未実施だとバックエンドのビルドが失敗します
-2. Route53 の公開ホストゾーンを用意します。例は `www.non-97.net` で、委任済みにします
+2. Route53 のパブリックホストゾーンを用意します。例は `www.non-97.net` で、委任済みにします
 3. ACM 証明書を us-east-1 に作成します。認証ドメイン (例 `auth.storage-browser.www.non-97.net`)
    用です。Cognito カスタムドメインは CloudFront に紐づくため、東京ではなく us-east-1 の証明書が
    必須です
@@ -143,6 +143,54 @@ pnpm build                                # 型チェックと本番ビルド
   - `sesIdentity` / `sesFromAddress` / `sesIdentityRegion` / `appOrigins` / `deletionProtection` / ライフサイクルの日数 / `wafRateLimitPer5Minutes`
 
 なお AWS アカウント ID は CDK が実行時に取得するため、このファイルには持たせていません。
+
+## コスト試算 ( 概算 )
+
+利用者 100 人、S3 保存データ 10 TiB を前提にした、東京リージョン ( ap-northeast-1 ) での月額のおおよその費用です。単価は各 AWS サービスの料金ページ ( 2026 年 7 月時点、オンデマンド、USD ) に基づきます。実際の請求はアクセス量やデプロイ頻度で変わるため、規模感の目安として扱ってください。
+
+### 前提条件
+
+- 月間アクティブ利用者 ( Cognito MAU ): 100
+- S3 の現行データ: 10 TiB。直近 90 日以内を Standard で 2 TiB、90 日超を Standard-IA で 8 TiB と仮定
+- バージョニングの非現行バージョン ( 30 日で失効 ): 現行の約 5% にあたる約 0.5 TiB を Standard 扱いと仮定
+- インターネットへのダウンロード: 合計 1 TiB/月。1 人あたり約 10 GiB/月
+- S3 リクエスト: 書き込みと一覧 ( PUT/LIST 系 ) 約 20 万件/月、読み取り ( GET 系 ) 約 30 万件/月
+- CloudTrail の S3 データイベント: 約 50 万件/月
+- CloudWatch Logs ( WAF と Cognito アクティビティ ): 約 0.5 GB/月
+- SES 送信: 数百通/月
+- Amplify Hosting: 月数回のデプロイと静的配信
+
+### 月額内訳
+
+| サービス | 主な内訳 | 月額概算 ( USD ) |
+|---|---|---|
+| S3 ストレージ | Standard 2.5 TiB + Standard-IA 8 TiB | 177 |
+| S3 データ転送アウト | 1 TiB/月 | 117 |
+| S3 リクエスト + IA 取り出し | PUT/GET/LIST + IA retrieval | 3 |
+| Cognito User Pools ( Plus ) | 100 MAU<br>脅威保護と Managed Login 込み | 2 |
+| AWS WAF | Web ACL + ルール 3 + リクエスト | 8 |
+| KMS | CMK 2 個<br>リクエストは Bucket Key で最小 | 2 |
+| CloudTrail | S3 データイベント 50 万件 | 0.5 |
+| CloudWatch Logs | 取り込み 0.5 GB + 保存 | 0.5 |
+| Amazon SES | 送信数百通 | 0.1 未満 |
+| Route 53 | ホストゾーンとクエリ | 0.9 |
+| Amplify Hosting | ビルドと静的配信 | 3 |
+| **合計** | | **約 314** |
+
+参考として、1 USD = 155 円換算で月額 約 48,000 円です。為替で変動します。
+
+### 費用の支配要因と変動の目安
+
+- S3 ストレージ 約 177 USD とデータ転送アウト 約 117 USD で、全体の 9 割超を占めます
+- ダウンロードが月 2 TiB に増えると、データ転送アウトは約 117 USD 増えます
+- データが Standard-IA に移行せず全量 Standard の場合、ストレージは約 256 USD になります
+
+### 本表に含めていないもの
+
+- 監査ログバケットの保存料は、データイベント量とライフサイクル 400 日での増減があるものの数 USD 未満とみて含めていません
+- ACM のパブリック証明書は無料です
+- Route 53 のホストゾーンは既存の共有ゾーンを使う前提です
+- Amplify Hosting のビルドインスタンスを XLARGE_72GB にしている分、ビルド 1 分あたりの単価は標準の 0.01 USD より高くなりますが、本番のデプロイ頻度が低いため影響は小さいとみています
 
 ## テスト
 
