@@ -30,7 +30,7 @@ export interface CognitoCustomDomainProps {
    * Cognito カスタムドメインは CloudFront に紐づくため **us-east-1** の証明書が必須。
    */
   readonly certificateArn: string;
-  /** A エイリアスレコードを作成する公開ホストゾーン */
+  /** A エイリアスレコードを作成するパブリックホストゾーン */
   readonly hostedZone: IHostedZone;
 }
 

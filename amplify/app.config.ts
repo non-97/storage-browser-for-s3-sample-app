@@ -30,7 +30,7 @@ export const customDomainConfig = {
   certificateId: "ce98c8e8-283c-4a46-8327-bacfe50040a0",
   /** ACM 証明書のリージョン。Cognito カスタムドメインは us-east-1 必須。 */
   certificateRegion: "us-east-1",
-  /** レコードを作成する公開ホストゾーン */
+  /** レコードを作成するパブリックホストゾーン */
   hostedZoneId: "Z0062708UVGI90E3DEGD",
   hostedZoneName: "www.non-97.net",
 } as const;
