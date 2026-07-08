@@ -53,14 +53,14 @@ export function attachThreatProtection(
         sourceArn: `arn:aws:ses:${securityConfig.sesIdentityRegion}:${Stack.of(scope).account}:identity/${securityConfig.sesIdentity}`,
         from: securityConfig.sesFromAddress,
         blockEmail: {
-          subject: "【共有ファイル管理】不審なサインインをブロックしました",
+          subject: "【Secure File Sharing】不審なサインインをブロックしました",
           textBody: buildRiskNotifyEmailBody(
             "あなたのアカウントで不審なサインインを検知し、ブロックしました。",
             "このサインインはブロックされたため、アクセスは行われていません。",
           ),
         },
         mfaEmail: {
-          subject: "【共有ファイル管理】追加の本人確認が要求されました",
+          subject: "【Secure File Sharing】追加の本人確認が要求されました",
           textBody: buildRiskNotifyEmailBody(
             "あなたのアカウントで通常と異なるサインインを検知したため、追加の本人確認 (MFA) を要求しました。",
             "本人による操作であれば、MFA を完了してサインインを続行してください。",

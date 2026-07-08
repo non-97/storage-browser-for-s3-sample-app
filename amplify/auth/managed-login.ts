@@ -14,7 +14,7 @@ const loginLogoPngBase64 = readFileSync(
 
 /**
  * Managed Login (新しいホスト型ログイン UI, v2) を有効化し、ブランディング
- * (共有ファイル管理 / Storage Browser for S3 のフォームロゴ) を設定する。
+ * (Secure File Sharing / Storage Browser for S3 のフォームロゴ) を設定する。
  *
  * Amplify が externalProviders 用に自動生成した UserPoolDomain を探し出し、
  * ManagedLoginVersion=2 を上書きしたうえでブランディングを紐付ける。
@@ -51,7 +51,7 @@ export function enableManagedLogin(props: {
 
   // Managed Login のブランディング。
   // Cognito 既定スタイル (branding-settings.json = describe の ReturnMergedResources 出力を
-  // 土台に form.logo.enabled=true へ変更) に、フォームロゴ (共有ファイル管理 / Storage Browser
+  // 土台に form.logo.enabled=true へ変更) に、フォームロゴ (Secure File Sharing / Storage Browser
   // for S3 バナー PNG) を FORM_LOGO アセットとして登録する。
   // useCognitoProvidedValues と settings/assets は併用不可のため useCognitoProvidedValues は指定しない。
   // PNG を使うのは Cognito の SVG サニタイザが role/aria-label を許可せず日本語 <text> 描画も

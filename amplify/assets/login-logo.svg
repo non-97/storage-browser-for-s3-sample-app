@@ -9,5 +9,5 @@
   <!-- main title -->
   <text x="128" y="68" font-family="'Helvetica Neue', Arial, sans-serif" font-size="31" font-weight="700" fill="#1a2332" letter-spacing="0.4">Storage Browser for S3</text>
   <!-- subtitle (JP + EN) -->
-  <text x="129" y="101" font-family="'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', Meiryo, sans-serif" font-size="17" fill="#5b6b80" letter-spacing="0.6">共有ファイル管理 / Secure File Sharing</text>
+  <text x="129" y="101" font-family="'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', Meiryo, sans-serif" font-size="17" fill="#5b6b80" letter-spacing="0.6">Secure File Sharing</text>
 </svg>
